@@ -10,7 +10,7 @@ matrix:
   - go: tip
 
 script:
-  - go test -v -coverprofile=coverage.txt -covermode=atomic -race .
+  - make test
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

@@ -1,9 +1,14 @@
+INSTALL_GO_DEP=go get -u github.com/golang/dep/cmd/dep && dep ensure
+
 all: test build
 
-test:
-	go test
+pre:
+	$(INSTALL_GO_DEP)
 
-build:
+test: pre
+	go test -v -coverprofile=coverage.txt -covermode=atomic -race .
+
+build: pre
 	go build
 
 clean:
