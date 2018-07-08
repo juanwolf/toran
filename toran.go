@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
+	"strconv"
+)
 
 // A TranslationTableEntry is the row in memory for the nat
 // storing what incoming connection it had and to where.
@@ -73,5 +78,25 @@ func (t *TranslationTableEntry) ToString() string {
 
 func main() {
 	translationTable := NewTranslationTable()
-	translationTable.Print()
+	handle, err := pcap.OpenLive("lo", 1600, true, pcap.BlockForever)
+	if err != nil {
+		panic(err)
+	}
+	defer handle.Close()
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	for packet := range packetSource.Packets() {
+		fmt.Println(packet.String()) // Do something with a packet here.
+		var networkLayer gopacket.NetworkLayer
+		var transportLayer gopacket.TransportLayer
+		networkLayer = packet.NetworkLayer()
+		transportLayer = packet.TransportLayer()
+		networkFlow := networkLayer.NetworkFlow()
+		transportFlow := transportLayer.TransportFlow()
+		srcPort, _ := strconv.Atoi(transportFlow.Src().String())
+		dstPort, _ := strconv.Atoi(transportFlow.Dst().String())
+
+		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, 42)
+		translationTable.AddEntry(*translationTableEntry)
+		translationTable.Print()
+	}
 }
