@@ -56,14 +56,13 @@ func getRandomPort() int {
 	return 42
 }
 
-func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int) *TranslationTableEntry {
-	randomPort := getRandomPort()
+func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int, natPort int) *TranslationTableEntry {
 	return &TranslationTableEntry{
 		dstAddr: dstAddr,
 		dstPort: dstPort,
 		srcAddr: srcAddr,
 		srcPort: srcPort,
-		natPort: randomPort,
+		natPort: natPort,
 	}
 }
 
