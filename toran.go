@@ -1,4 +1,4 @@
-package toran
+package main
 
 import "fmt"
 
@@ -45,7 +45,7 @@ func (t *TranslationTable) Print() {
 	fmt.Println("+-----------------------------------------------------------------+")
 
 	for _, entry := range t.Entries {
-		fmt.Printf("| %v | %v | %v | %v | %v |\n", entry.srcAddr, entry.srcPort, entry.dstAddr, entry.dstPort, entry.natPort)
+		fmt.Printf("| %-15v | %-7v | %-15v | %-7v | %-7v |\n", entry.srcAddr, entry.srcPort, entry.dstAddr, entry.dstPort, entry.natPort)
 	}
 
 	fmt.Println("+-----------------------------------------------------------------+")
@@ -56,7 +56,7 @@ func getRandomPort() int {
 	return 42
 }
 
-func newTranslationTableEntry(dstPort, srcPort int, dstAddr, srcAddr string) *TranslationTableEntry {
+func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int) *TranslationTableEntry {
 	randomPort := getRandomPort()
 	return &TranslationTableEntry{
 		dstAddr: dstAddr,
