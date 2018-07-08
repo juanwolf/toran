@@ -6,7 +6,7 @@ pre:
 	$(INSTALL_GO_DEP)
 
 test: pre
-	go test -v -coverprofile=coverage.txt -covermode=atomic -race .
+	CGO_ENABLED=1 go test -v -coverprofile=coverage.txt -covermode=atomic -race .
 
 build: pre
 	go build
