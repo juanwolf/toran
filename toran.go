@@ -20,7 +20,9 @@ type TranslationTable struct {
 	Entries []TranslationTableEntry
 }
 
-func newTranslationTable() *TranslationTable {
+// NewTranslationTable creates an empty
+// TranslationTable
+func NewTranslationTable() *TranslationTable {
 	return &TranslationTable{
 		Entries: make([]TranslationTableEntry, 0),
 	}
@@ -29,6 +31,11 @@ func newTranslationTable() *TranslationTable {
 // GetEntries returns the list of entries of this Translation Table
 func (t *TranslationTable) GetEntries() []TranslationTableEntry {
 	return t.Entries
+}
+
+// AddEntry add a translationTableEntry to the list of entries of this table
+func (t *TranslationTable) AddEntry(entry TranslationTableEntry) {
+	t.Entries = append(t.Entries, entry)
 }
 
 // Print will returns in the standard output what the translation table is made of.
@@ -66,6 +73,6 @@ func (t *TranslationTableEntry) ToString() string {
 }
 
 func main() {
-	translationTable := newTranslationTable()
+	translationTable := NewTranslationTable()
 	translationTable.Print()
 }
