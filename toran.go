@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+	"net"
 	"strconv"
 )
+
+// MaxAttemptsGetPort is the number of attempt authorized to get a random port
+const MaxAttemptsGetPort = 5
 
 // A TranslationTableEntry is the row in memory for the nat
 // storing what incoming connection it had and to where.
@@ -57,8 +61,27 @@ func (t *TranslationTable) Print() {
 }
 
 // getRandomPort returns a random port available on the local machine
-func getRandomPort() int {
-	return 42
+// attempt is the number of attempts of this function, reaching a specific number will stop
+// the function.
+func getRandomPort(attempt, maxAttempt int) int {
+	if attempt >= maxAttempt {
+		panic("[ERROR] getRandomPort: Too many attempts without getting a port.")
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		fmt.Println("[ERROR}: Could not get a random port... Retrying...")
+		getRandomPort(attempt+1, maxAttempt)
+	}
+	_, portStr, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		panic(fmt.Sprint("[ERROR] getRandomPort: Impossible to parse the address allocated (%s)", listener.Addr().String()))
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		panic(fmt.Sprint("[ERROR] getRandomPort: Impossible to cast the port number to an integer. Value: %s", portStr))
+	}
+	return port
 }
 
 func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int, natPort int) *TranslationTableEntry {
@@ -78,14 +101,14 @@ func (t *TranslationTableEntry) ToString() string {
 
 func main() {
 	translationTable := NewTranslationTable()
-	handle, err := pcap.OpenLive("lo", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive("lo0", 1600, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
 	defer handle.Close()
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		fmt.Println(packet.String()) // Do something with a packet here.
+		randomPort := getRandomPort(0, MaxAttemptsGetPort)
 		var networkLayer gopacket.NetworkLayer
 		var transportLayer gopacket.TransportLayer
 		networkLayer = packet.NetworkLayer()
@@ -95,7 +118,7 @@ func main() {
 		srcPort, _ := strconv.Atoi(transportFlow.Src().String())
 		dstPort, _ := strconv.Atoi(transportFlow.Dst().String())
 
-		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, 42)
+		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, randomPort)
 		translationTable.AddEntry(*translationTableEntry)
 		translationTable.Print()
 	}
