@@ -73,15 +73,8 @@ func getRandomPort(attempt, maxAttempt int) int {
 		fmt.Println("[ERROR}: Could not get a random port... Retrying...")
 		getRandomPort(attempt+1, maxAttempt)
 	}
-	_, portStr, err := net.SplitHostPort(listener.Addr().String())
-	if err != nil {
-		panic(fmt.Sprint("[ERROR] getRandomPort: Impossible to parse the address allocated (%s)", listener.Addr().String()))
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		panic(fmt.Sprint("[ERROR] getRandomPort: Impossible to cast the port number to an integer. Value: %s", portStr))
-	}
-	return port
+
+	return listener.Addr().(*net.TCPAddr).Port
 }
 
 func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int, natPort int) *TranslationTableEntry {
