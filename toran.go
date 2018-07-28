@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"net"
 	"strconv"
@@ -21,6 +22,7 @@ type TranslationTableEntry struct {
 	srcAddr string
 	srcPort int
 	natPort int
+	content []byte
 }
 
 // TranslationTable is a list of entries
@@ -77,19 +79,47 @@ func getRandomPort(attempt, maxAttempt int) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int, natPort int) *TranslationTableEntry {
+func newTranslationTableEntry(srcAddr string, srcPort int, dstAddr string, dstPort int, natPort int, content []byte) *TranslationTableEntry {
 	return &TranslationTableEntry{
 		dstAddr: dstAddr,
 		dstPort: dstPort,
 		srcAddr: srcAddr,
 		srcPort: srcPort,
 		natPort: natPort,
+		content: content,
 	}
 }
 
 // ToString returns the string reprensenting this Entry
 func (t *TranslationTableEntry) ToString() string {
 	return "entry"
+}
+
+// Translate will generate a packet  to send to the outside world
+// using the nat port as source port
+func (t *TranslationTableEntry) Translate() gopacket.Packet {
+	ipLayer := &layers.IPv4{
+		SrcIP: net.IP{127, 0, 0, 1},
+		DstIP: net.ParseIP(t.dstAddr),
+	}
+	ethernetLayer := &layers.Ethernet{
+		SrcMAC: net.HardwareAddr{0xFF, 0xAA, 0xFA, 0xAA, 0xFF, 0xAA},
+		DstMAC: net.HardwareAddr{0xBD, 0xBD, 0xBD, 0xBD, 0xBD, 0xBD},
+	}
+	tcpLayer := &layers.TCP{
+		SrcPort: layers.TCPPort(t.natPort),
+		DstPort: layers.TCPPort(t.dstPort),
+	}
+	// And create the packet with the layers
+	buffer := gopacket.NewSerializeBuffer()
+	gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{},
+		ethernetLayer,
+		ipLayer,
+		tcpLayer,
+		gopacket.Payload(t.content),
+	)
+	outgoingPacket := buffer.Bytes()
+	return nil
 }
 
 func main() {
@@ -111,7 +141,7 @@ func main() {
 		srcPort, _ := strconv.Atoi(transportFlow.Src().String())
 		dstPort, _ := strconv.Atoi(transportFlow.Dst().String())
 
-		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, randomPort)
+		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, randomPort, packet.Data())
 		translationTable.AddEntry(*translationTableEntry)
 		translationTable.Print()
 	}
