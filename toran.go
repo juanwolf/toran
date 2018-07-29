@@ -44,6 +44,30 @@ func (t *TranslationTable) GetEntries() []TranslationTableEntry {
 	return t.Entries
 }
 
+// GetReverseAddrs returns a map of dstAddr => srcAddr.
+// This way it's easy to get the destination of the packet coming back.
+// Like a reverse proxy you know?
+func (t *TranslationTable) GetReverseAddrs() map[string]string {
+	var result map[string]string
+	for _, entry := range t.Entries {
+		result[entry.DstAddr()] = entry.SrcAddr()
+	}
+	return result
+}
+
+// RemoveEntry removes an entry that has been processed.
+// As the entries gets randomly a port associated, it's more than enough
+// to differentiate it.
+// WARNING: If some issue appear we might need to add the DstAddr "just in case"
+func (t *TranslationTable) RemoveEntry(natPort int) {
+	for index, entry := range t.Entries {
+		if entry.natPort == natPort {
+			t.Entries[index] = t.Entries[len(t.Entries)-1]
+			t.Entries = t.Entries[:len(t.Entries)-1]
+		}
+	}
+}
+
 // AddEntry add a translationTableEntry to the list of entries of this table
 func (t *TranslationTable) AddEntry(entry TranslationTableEntry) {
 	t.Entries = append(t.Entries, entry)
@@ -72,7 +96,7 @@ func getRandomPort(attempt, maxAttempt int) int {
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		fmt.Println("[ERROR}: Could not get a random port... Retrying...")
+		fmt.Println("[ERROR]: Could not get a random port... Retrying...")
 		getRandomPort(attempt+1, maxAttempt)
 	}
 	defer listener.Close()
@@ -132,7 +156,6 @@ func (t *TranslationTableEntry) NatAddr() string {
 
 func (t *TranslationTableEntry) DstAddr() string {
 	return fmt.Sprintf("%s:%d", t.dstAddr, t.dstPort)
-
 }
 
 // Send will actually send the  "TableEntry" to the remote server.
@@ -168,7 +191,6 @@ func main() {
 	defer handle.Close()
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
-		randomPort := getRandomPort(0, MaxAttemptsGetPort)
 		var networkLayer gopacket.NetworkLayer
 		var transportLayer gopacket.TransportLayer
 		networkLayer = packet.NetworkLayer()
@@ -178,9 +200,19 @@ func main() {
 		srcPort, _ := strconv.Atoi(transportFlow.Src().String())
 		dstPort, _ := strconv.Atoi(transportFlow.Dst().String())
 
-		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, randomPort, packet.Data())
-		translationTable.AddEntry(*translationTableEntry)
-		translationTable.Print()
-		translationTableEntry.SendTCP()
+		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, 0, packet.Data())
+		if translationTable.GetReverseAddrs()[translationTableEntry.SrcAddr()] != "" {
+			natPort := translationTableEntry.dstPort
+			translationTableEntry.dstAddr = translationTable.GetReverseAddrs()[translationTableEntry.SrcAddr()]
+			translationTableEntry.SendTCP()
+			translationTable.RemoveEntry(natPort)
+
+		} else {
+			randomPort := getRandomPort(0, MaxAttemptsGetPort)
+			translationTableEntry.natPort = randomPort
+			translationTable.AddEntry(*translationTableEntry)
+			translationTable.Print()
+			translationTableEntry.SendTCP()
+		}
 	}
 }
