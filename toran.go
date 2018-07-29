@@ -97,7 +97,7 @@ func (t *TranslationTableEntry) ToString() string {
 
 // Translate will generate a packet  to send to the outside world
 // using the nat port as source port
-func (t *TranslationTableEntry) Translate() []byte {
+func (t *TranslationTableEntry) translate() []byte {
 	ipLayer := &layers.IPv4{
 		SrcIP: net.IP{127, 0, 0, 1},
 		DstIP: net.ParseIP(t.dstAddr),
@@ -121,9 +121,46 @@ func (t *TranslationTableEntry) Translate() []byte {
 	return buffer.Bytes()
 }
 
+func (t *TranslationTableEntry) SrcAddr() string {
+	return fmt.Sprintf("%s:%d", t.srcAddr, t.srcPort)
+}
+
+func (t *TranslationTableEntry) NatAddr() string {
+	return fmt.Sprintf("%s:%d", "127.0.0.1", t.natPort)
+}
+
+func (t *TranslationTableEntry) DstAddr() string {
+	return fmt.Sprintf("%s:%d", t.dstAddr, t.dstPort)
+
+}
+
+// Send will actually send the  "TableEntry" to the remote server.
+// It internally uses translate to modify the the IP and TCP layers
+func (t *TranslationTableEntry) SendTCP() error {
+
+	translatedPayload := t.translate()
+
+	remoteTCPAddr, err := net.ResolveTCPAddr("tcp", t.DstAddr())
+	if err != nil {
+		panic(err)
+	}
+	localTCPAddr, err := net.ResolveTCPAddr("tcp", t.NatAddr())
+	if err != nil {
+		panic(err)
+	}
+	packetConn, err := net.DialTCP("tcp", localTCPAddr, remoteTCPAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	bytesWrote, err := packetConn.Write(translatedPayload)
+	fmt.Println(fmt.Sprintf("packet of length %d sent to %s!\n", bytesWrote, remoteTCPAddr.String()))
+	return nil
+}
+
 func main() {
 	translationTable := NewTranslationTable()
-	handle, err := pcap.OpenLive("lo0", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive("wlp2s0", 1600, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
@@ -143,5 +180,6 @@ func main() {
 		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, randomPort, packet.Data())
 		translationTable.AddEntry(*translationTableEntry)
 		translationTable.Print()
+		translationTableEntry.SendTCP()
 	}
 }
