@@ -75,6 +75,7 @@ func getRandomPort(attempt, maxAttempt int) int {
 		fmt.Println("[ERROR}: Could not get a random port... Retrying...")
 		getRandomPort(attempt+1, maxAttempt)
 	}
+	defer listener.Close()
 
 	return listener.Addr().(*net.TCPAddr).Port
 }
