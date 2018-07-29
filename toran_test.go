@@ -20,7 +20,7 @@ func TestNewTranslationTableEntry(t *testing.T) {
 	dstAddr := "255.255.255.255"
 	dstPort := 25999
 	natPort := 19999
-	entry := newTranslationTableEntry(srcAddr, srcPort, dstAddr, dstPort, natPort)
+	entry := newTranslationTableEntry(srcAddr, srcPort, dstAddr, dstPort, natPort, nil)
 	if entry.srcAddr != srcAddr || entry.srcPort != srcPort || entry.dstPort != entry.dstPort || entry.dstAddr != dstAddr {
 		t.Error("newTranslationTableEntry did not fill properly all the fields")
 	}
@@ -33,7 +33,7 @@ func TestAddEntry(t *testing.T) {
 	dstAddr := "255.255.255.255"
 	dstPort := 25999
 	natPort := 19999
-	entry := newTranslationTableEntry(srcAddr, srcPort, dstAddr, dstPort, natPort)
+	entry := newTranslationTableEntry(srcAddr, srcPort, dstAddr, dstPort, natPort, nil)
 	table.AddEntry(*entry)
 
 	if len(table.GetEntries()) != 1 {
