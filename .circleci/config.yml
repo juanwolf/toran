@@ -12,6 +12,7 @@ jobs:
     steps:
       - checkout
       - run: go get github.com/jstemmer/go-junit-report
+      - run: sudo apt-get install libpcap-dev
       - run:
           name: Run tests and store them for CircleCI
           command: |
