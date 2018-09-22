@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"net"
-	"strconv"
 )
 
 // MaxAttemptsGetPort is the number of attempt authorized to get a random port
@@ -146,19 +147,23 @@ func (t *TranslationTableEntry) translate() []byte {
 	return buffer.Bytes()
 }
 
+// SrcAddr returns the source address of a translation table entry.
+// Example: 7.7.7.7:56
 func (t *TranslationTableEntry) SrcAddr() string {
 	return fmt.Sprintf("%s:%d", t.srcAddr, t.srcPort)
 }
 
+// NatAddr returns the address that the nat translated to
 func (t *TranslationTableEntry) NatAddr() string {
 	return fmt.Sprintf("%s:%d", "127.0.0.1", t.natPort)
 }
 
+// DstAddr returns the destination address of this entry
 func (t *TranslationTableEntry) DstAddr() string {
 	return fmt.Sprintf("%s:%d", t.dstAddr, t.dstPort)
 }
 
-// Send will actually send the  "TableEntry" to the remote server.
+// SendTCP will actually send the  "TableEntry" to the remote server.
 // It internally uses translate to modify the the IP and TCP layers
 func (t *TranslationTableEntry) SendTCP() error {
 
