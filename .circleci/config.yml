@@ -21,3 +21,10 @@ jobs:
             make test | tee ${TEST_RESULTS}/go-test.out
 
       - run: bash <(curl -s https://codecov.io/bash)
+
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: raw-test-output
+
+      - store_test_results:
+          path: /tmp/test-results
