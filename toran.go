@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"strconv"
@@ -183,8 +184,13 @@ func (t *TranslationTableEntry) SendTCP() error {
 }
 
 func main() {
+	listeningInterface := flag.String("i", "wlp2s0", "The interface to listen on")
+	authorizedSubnet := flag.String("f", "0.0.0.0/0", "Filter incoming packets for subnet")
+	flag.Parse()
+	fmt.Println("TORAN Started! Listening on", *listeningInterface, "and packets from", *authorizedSubnet)
+	_, listeningSubnet, _ := net.ParseCIDR(*authorizedSubnet)
 	translationTable := NewTranslationTable()
-	handle, err := pcap.OpenLive("wlp2s0", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive(*listeningInterface, 1600, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
@@ -199,6 +205,12 @@ func main() {
 		transportFlow := transportLayer.TransportFlow()
 		srcPort, _ := strconv.Atoi(transportFlow.Src().String())
 		dstPort, _ := strconv.Atoi(transportFlow.Dst().String())
+		srcIP := networkFlow.Src().String()
+
+		if !listeningSubnet.Contains(net.ParseIP(srcIP)) {
+			fmt.Println(srcIP, "not part of", *authorizedSubnet, ". Skipping...")
+			continue
+		}
 
 		translationTableEntry := newTranslationTableEntry(networkFlow.Src().String(), srcPort, networkFlow.Dst().String(), dstPort, 0, packet.Data())
 		if translationTable.GetReverseAddrs()[translationTableEntry.SrcAddr()] != "" {
