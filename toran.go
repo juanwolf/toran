@@ -151,7 +151,7 @@ func (t *TranslationTableEntry) SrcAddr() string {
 
 // NatAddr returns the address that the nat translated to
 func (t *TranslationTableEntry) NatAddr() string {
-	return fmt.Sprintf("%s:%d", "127.0.0.1", t.natPort)
+	return fmt.Sprintf("%s:%d", "", t.natPort)
 }
 
 // DstAddr returns the destination address of this entry
