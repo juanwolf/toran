@@ -50,7 +50,7 @@ func (t *TranslationTable) GetEntries() []TranslationTableEntry {
 // This way it's easy to get the destination of the packet coming back.
 // Like a reverse proxy you know?
 func (t *TranslationTable) GetReverseAddrs() map[string]string {
-	var result map[string]string
+	result := make(map[string]string)
 	for _, entry := range t.Entries {
 		result[entry.DstAddr()] = entry.SrcAddr()
 	}
